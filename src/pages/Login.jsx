@@ -35,11 +35,12 @@ export default function Login() {
     <div className="flex min-h-dvh items-center justify-center bg-night px-5">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-edge bg-panel">
-            <div className="h-6 w-6 rounded-full border-[3px] border-gold" />
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-edge bg-panel">
+            <img src="/simbolo.png" alt="" className="h-9 w-9 object-contain" />
           </div>
-          <h1 className="font-display text-2xl font-extrabold tracking-tight">Julisbel Kurtz</h1>
-          <p className="mt-1 text-sm text-mute">CRM · Pacientes & Agenda</p>
+          <h1 className="font-display text-3xl tracking-tight">Julisbel Kurtz</h1>
+          <p className="mt-1 text-xs font-semibold uppercase tracking-[0.2em] text-goldsoft">Enfermeira Esteta</p>
+          <p className="mt-2 text-sm text-mute">CRM · Pacientes & Agenda</p>
         </div>
 
         <form onSubmit={submit} className="space-y-4 rounded-3xl border border-edge bg-panel p-6">

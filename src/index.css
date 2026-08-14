@@ -1,16 +1,40 @@
 @import "tailwindcss";
 
+@font-face {
+  font-family: "TAN Pearl";
+  src: url("/fonts/tan-pearl.otf") format("opentype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Open Sans";
+  src: url("/fonts/OpenSans-Regular.ttf") format("truetype");
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Open Sans";
+  src: url("/fonts/OpenSans-Semibold.ttf") format("truetype");
+  font-weight: 600;
+  font-display: swap;
+}
+
 @theme {
-  --color-night: #0a0f0d;
-  --color-panel: #131a17;
-  --color-raise: #1b2420;
-  --color-edge: #29352e;
+  --color-night: #0c1310;
+  --color-panel: #16211c;
+  --color-raise: #1e2b24;
+  --color-edge: #2c3a32;
   --color-ink: #ffffff;
-  --color-mute: #d8e0da;
-  --color-gold: #c9a961;
-  --color-goldsoft: #e8d5a3;
-  --font-display: "Fraunces", ui-serif, serif;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --color-mute: #d7ddd7;
+  --color-gold: #c4a880;
+  --color-goldsoft: #ddc7a5;
+  --color-forest: #3d4d41;
+  --color-sage: #a0a096;
+  --color-cream: #e6e5dd;
+  --font-display: "TAN Pearl", ui-serif, serif;
+  --font-sans: "Open Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
 html {
@@ -28,6 +52,8 @@ body {
   font-family: var(--font-sans);
   color: var(--color-ink);
   -webkit-font-smoothing: antialiased;
+  /* TAN Pearl e Open Sans só têm os pesos carregados abaixo — sem negrito sintético */
+  font-synthesis: none;
 }
 
 ::selection {

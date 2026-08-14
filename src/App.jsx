@@ -70,10 +70,10 @@ function GlobalSearch() {
 
 function Logo({ size = 'lg' }) {
   const s = size === 'lg' ? 'h-11 w-11 rounded-2xl' : 'h-9 w-9 rounded-xl'
-  const r = size === 'lg' ? 'h-4.5 w-4.5' : 'h-3.5 w-3.5'
+  const img = size === 'lg' ? 'h-6 w-6' : 'h-5 w-5'
   return (
     <div className={`flex ${s} items-center justify-center border border-edge bg-panel`}>
-      <div className={`${r} rounded-full border-2 border-gold`} style={{ height: size === 'lg' ? 18 : 14, width: size === 'lg' ? 18 : 14 }} />
+      <img src="/simbolo.png" alt="" className={`${img} object-contain`} />
     </div>
   )
 }

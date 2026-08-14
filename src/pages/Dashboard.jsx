@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { Spinner, Tag } from '../lib/ui'
 import { todayISO, fmtTime, fmtDate } from '../lib/dates'
+import { STAGES } from '../lib/patients'
 
 export default function Dashboard() {
   const { session } = useAuth()
@@ -15,7 +16,7 @@ export default function Dashboard() {
     Promise.all([
       supabase.from('appointments').select('*, patients(name)').eq('appointment_date', today).order('appointment_time'),
       supabase.from('appointments').select('*, patients(name)').gt('appointment_date', today).eq('status', 'agendado').order('appointment_date').order('appointment_time').limit(5),
-      supabase.from('patients').select('id'),
+      supabase.from('patients').select('id,stage'),
     ]).then(([today, upcoming, patients]) =>
       setData({
         today: today.data ?? [],
@@ -26,6 +27,8 @@ export default function Dashboard() {
   }, [])
 
   if (!data) return <Spinner />
+
+  const stageCounts = STAGES.map((s) => ({ ...s, count: data.patients.filter((p) => p.stage === s.key).length }))
 
   return (
     <div className="space-y-4">
@@ -42,6 +45,23 @@ export default function Dashboard() {
           <p className="mt-2 font-display text-2xl font-extrabold">{data.upcoming.length}</p>
         </div>
       </div>
+
+      <section className="rounded-3xl border border-edge bg-panel p-5">
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="font-display text-sm font-bold uppercase tracking-wider text-mute">Pipeline de pacientes</h2>
+          <Link to="/pacientes" className="flex items-center gap-1 text-xs font-semibold text-goldsoft hover:underline">
+            ver kanban <ArrowRight size={13} />
+          </Link>
+        </div>
+        <div className="grid grid-cols-3 gap-3">
+          {stageCounts.map((s) => (
+            <div key={s.key} className="rounded-2xl bg-raise p-3 text-center">
+              <p className="font-display text-xl font-extrabold">{s.count}</p>
+              <p className="mt-1 text-[11px] font-semibold text-mute">{s.label}</p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card icon={CalendarDays} title="Hoje na agenda" to="/agenda">
