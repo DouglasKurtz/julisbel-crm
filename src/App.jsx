@@ -125,7 +125,7 @@ function Shell() {
             >
               <LogOut size={17} />
             </button>
-            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gold/20 font-display text-sm font-bold text-goldsoft">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-gold/20 text-sm font-bold text-goldsoft">
               J
             </div>
           </div>
@@ -137,7 +137,7 @@ function Shell() {
             <div className="flex items-center gap-3">
               <span className="md:hidden"><Logo size="sm" /></span>
               <div>
-                <h1 className="font-display text-xl font-extrabold tracking-tight">Olá, Julisbel!</h1>
+                <h1 className="text-xl font-bold tracking-tight">Olá, Julisbel!</h1>
                 <p className="text-xs text-mute">
                   {WEEKDAYS[now.getDay()]}, {now.getDate()} de {MONTHS[now.getMonth()].toLowerCase()}
                 </p>

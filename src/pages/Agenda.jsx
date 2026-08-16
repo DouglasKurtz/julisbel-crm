@@ -77,7 +77,7 @@ export default function Agenda() {
     <div className="space-y-5">
       <header className="flex items-center justify-between">
         <div>
-          <h1 className="font-display text-2xl font-extrabold tracking-tight">Agenda</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Agenda</h1>
           <p className="text-sm text-mute">Atendimentos marcados</p>
         </div>
         <Btn onClick={() => setEditing({ ...BLANK, appointment_date: selected })} disabled={patients.length === 0}>
@@ -96,7 +96,7 @@ export default function Agenda() {
         <section className="rounded-3xl border border-edge bg-panel p-4">
           <div className="mb-3 flex items-center justify-between px-1">
             <button onClick={() => moveMonth(-1)} className="rounded-lg p-1.5 text-mute hover:bg-raise hover:text-ink"><ChevronLeft size={18} /></button>
-            <p className="font-display text-sm font-bold">{MONTHS[cursor.m]} {cursor.y}</p>
+            <p className="text-sm font-bold">{MONTHS[cursor.m]} {cursor.y}</p>
             <button onClick={() => moveMonth(1)} className="rounded-lg p-1.5 text-mute hover:bg-raise hover:text-ink"><ChevronRight size={18} /></button>
           </div>
           <div className="grid grid-cols-7 gap-1 text-center">
@@ -127,7 +127,7 @@ export default function Agenda() {
 
         {/* atendimentos do dia */}
         <section className="rounded-3xl border border-edge bg-panel p-5">
-          <h2 className="mb-3 font-display text-sm font-bold uppercase tracking-wider text-mute">
+          <h2 className="mb-3 text-sm font-bold uppercase tracking-wider text-mute">
             {sd}/{sm}/{sy}
           </h2>
           {dayEvents.length === 0 ? (
@@ -138,7 +138,7 @@ export default function Agenda() {
                 const st = STATUSES.find((s) => s.key === ev.status)
                 return (
                   <li key={ev.id} className="flex items-start gap-3 rounded-xl bg-raise px-3.5 py-3">
-                    <span className="min-w-[46px] pt-0.5 font-display text-sm font-bold text-goldsoft">
+                    <span className="min-w-[46px] pt-0.5 text-sm font-bold text-goldsoft">
                       {ev.appointment_time ? fmtTime(ev.appointment_time) : '—'}
                     </span>
                     <button onClick={() => setEditing({ ...ev, appointment_time: ev.appointment_time ?? '' })} className="flex-1 text-left">
