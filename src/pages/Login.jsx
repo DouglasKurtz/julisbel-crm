@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Eye, EyeOff } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Btn, Field, inputCls } from '../lib/ui'
 
@@ -6,6 +7,7 @@ export default function Login() {
   const [mode, setMode] = useState('login')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [msg, setMsg] = useState(null)
   const [busy, setBusy] = useState(false)
 
@@ -48,7 +50,25 @@ export default function Login() {
             <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} placeholder="teu@email.com" />
           </Field>
           <Field label="Senha">
-            <input type="password" required minLength={6} value={password} onChange={(e) => setPassword(e.target.value)} className={inputCls} placeholder="mínimo 6 caracteres" />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                required
+                minLength={6}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={`${inputCls} pr-11`}
+                placeholder="mínimo 6 caracteres"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((s) => !s)}
+                tabIndex={-1}
+                className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-mute hover:text-ink"
+              >
+                {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+              </button>
+            </div>
           </Field>
           {msg && <p className="text-sm text-goldsoft">{msg}</p>}
           <Btn type="submit" disabled={busy} className="w-full">
