@@ -276,7 +276,9 @@ export default function Patients() {
                   </IconBtn>
                 </div>
 
-                <div className="space-y-2">
+                {/* com centenas de contatos numa coluna a página virava uma tira sem fim:
+                    cada coluna rola por dentro e as vizinhas continuam alcançáveis */}
+                <div className="max-h-[60vh] space-y-2 overflow-y-auto overscroll-contain pr-0.5 lg:max-h-[calc(100dvh-22rem)]">
                   {cards.length === 0 && (
                     <p className="rounded-xl border border-dashed border-edge px-3 py-6 text-center text-xs text-mute/60">
                       {drag ? 'Solta aqui' : 'Nenhuma paciente'}
