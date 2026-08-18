@@ -42,9 +42,14 @@ html {
   color-scheme: dark;
 }
 
-/* ícones nativos (calendário, relógio) em branco */
+/* Com color-scheme: dark o Chrome JÁ desenha o ícone de calendário/relógio claro.
+   Inverter de novo deixava o ícone preto no fundo escuro, ou seja, invisível.
+   Aqui só aumentamos a área de toque e a opacidade. */
 input::-webkit-calendar-picker-indicator {
-  filter: invert(1);
+  opacity: 0.75;
+  cursor: pointer;
+  padding: 6px;
+  margin-right: -2px;
 }
 
 body {
@@ -54,6 +59,10 @@ body {
   -webkit-font-smoothing: antialiased;
   /* TAN Pearl e Open Sans só têm os pesos carregados abaixo — sem negrito sintético */
   font-synthesis: none;
+  /* nada de flash cinza ao tocar no celular */
+  -webkit-tap-highlight-color: transparent;
+  /* o "puxar pra atualizar" e o quique do fim da página atrapalham num app */
+  overscroll-behavior-y: none;
 }
 
 ::selection {
@@ -62,6 +71,33 @@ body {
 
 input, select, textarea, button {
   font-family: inherit;
+}
+
+/* iOS dá zoom automático ao focar campo com fonte < 16px — trava em 16 no celular */
+@media (max-width: 639px) {
+  input, select, textarea {
+    font-size: 16px;
+  }
+}
+
+/* segurar um card pra arrastar não pode selecionar texto nem abrir o menu do sistema */
+.no-touch-callout {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* nome de coluna comprido não pode fazer a página inteira deslizar de lado */
+html, body {
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+/* no toque não existe hover: o retorno vem do :active */
+@media (hover: none) {
+  button:active, a:active, [role="button"]:active {
+    opacity: 0.65;
+  }
 }
 
 /* barra de rolagem discreta */

@@ -1,0 +1,16 @@
+{
+  "name": "Julisbel Kurtz — CRM",
+  "short_name": "Julisbel CRM",
+  "description": "Pacientes e agenda de atendimentos",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0c1310",
+  "theme_color": "#0c1310",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" }
+  ]
+}

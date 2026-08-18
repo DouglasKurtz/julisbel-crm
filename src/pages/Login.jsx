@@ -34,7 +34,8 @@ export default function Login() {
   }
 
   return (
-    <div className="flex min-h-dvh items-center justify-center bg-night px-5">
+    // com teclado aberto o conteúdo passa a caber por rolagem, sem cortar o topo
+    <div className="flex min-h-dvh items-center justify-center overflow-y-auto bg-night px-5 py-8">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-edge bg-panel">
@@ -46,27 +47,48 @@ export default function Login() {
         </div>
 
         <form onSubmit={submit} className="space-y-4 rounded-3xl border border-edge bg-panel p-6">
+          {/* name + autoComplete deixam o Chaves do iCloud e o Google preencherem;
+              autoCapitalize desligado evita "Julisbel@..." com maiúscula no Android */}
           <Field label="E-mail">
-            <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className={inputCls} placeholder="teu@email.com" />
+            <input
+              type="email"
+              name="email"
+              autoComplete="username"
+              inputMode="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className={inputCls}
+              placeholder="teu@email.com"
+            />
           </Field>
           <Field label="Senha">
             <div className="relative">
               <input
                 type={showPassword ? 'text' : 'password'}
+                name="password"
+                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 required
                 minLength={6}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className={`${inputCls} pr-11`}
+                className={`${inputCls} pr-12`}
                 placeholder="mínimo 6 caracteres"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((s) => !s)}
                 tabIndex={-1}
-                className="absolute inset-y-0 right-0 flex w-11 items-center justify-center text-mute hover:text-ink"
+                aria-label={showPassword ? 'Esconder senha' : 'Mostrar senha'}
+                className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-mute hover:text-ink"
               >
-                {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
               </button>
             </div>
           </Field>
