@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './lib/auth'
 import { supabase } from './lib/supabase'
 import { WEEKDAYS, MONTHS } from './lib/dates'
 import { IconBtn } from './lib/ui'
+import Ajuda from './components/Ajuda'
 import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Patients from './pages/Patients'
@@ -223,13 +224,15 @@ function Shell() {
               </div>
             </div>
             <GlobalSearch />
-            {/* no celular a busca e o sair vivem aqui — a lateral não existe */}
+            {/* no celular a busca, a ajuda e o sair vivem aqui — a lateral não existe */}
             <div className="flex shrink-0 items-center md:hidden">
               <MobileSearch />
+              <Ajuda />
               <IconBtn onClick={() => supabase.auth.signOut()} aria-label="Sair">
                 <LogOut size={18} />
               </IconBtn>
             </div>
+            <span className="hidden md:inline-flex"><Ajuda /></span>
           </header>
 
           <Routes>

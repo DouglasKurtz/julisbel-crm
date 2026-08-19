@@ -2,22 +2,30 @@ import { useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import {
   Plus, Phone, Search, Users, Cake, Pencil, ChevronLeft, ChevronRight,
-  Trash2, GripVertical, Columns3, X,
+  Trash2, GripVertical, Columns3, X, History, CalendarClock, Sprout,
 } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { Btn, IconBtn, Field, inputCls, Modal, Empty, Spinner, Erro } from '../lib/ui'
-import { fmtDate } from '../lib/dates'
-import { DEFAULT_STAGES, STAGE_COLORS } from '../lib/patients'
+import { fmtDate, todayISO } from '../lib/dates'
+import { DEFAULT_STAGES, STAGE_COLORS, SOURCES, sourceLabel, brl } from '../lib/patients'
+import { waLink, MENSAGENS, preencher } from '../lib/whatsapp'
 
-const BLANK_PATIENT = { name: '', phone: '', email: '', birth_date: '', stage_id: '', notes: '' }
+const BLANK_PATIENT = {
+  name: '', phone: '', email: '', birth_date: '', stage_id: '',
+  source: '', next_contact: '', notes: '',
+}
 const BLANK_STAGE = { label: '', hint: '', color: 'gold' }
 
-// telefone salvo como texto livre ("48 99123-4567") vira link de WhatsApp
-function waLink(phone) {
-  const d = (phone ?? '').replace(/\D/g, '')
-  if (d.length < 10) return null
-  return `https://wa.me/${d.length <= 11 ? '55' + d : d}`
-}
+// campos de data/select não aceitam null: o formulário trabalha com string vazia
+const paraForm = (p) => ({
+  ...p,
+  birth_date: p.birth_date ?? '',
+  next_contact: p.next_contact ?? '',
+  source: p.source ?? '',
+  email: p.email ?? '',
+  phone: p.phone ?? '',
+  notes: p.notes ?? '',
+})
 
 export default function Patients() {
   const [params, setParams] = useSearchParams()
@@ -30,6 +38,7 @@ export default function Patients() {
   const [drag, setDrag] = useState(null)
   const [busy, setBusy] = useState(false)
   const [erro, setErro] = useState(null)
+  const [historico, setHistorico] = useState(null)
   const seeding = useRef(false)
   const dragRef = useRef(null)
   const boardRef = useRef(null)
@@ -57,6 +66,21 @@ export default function Patients() {
     if (daUrl) setQ(daUrl)
   }, [params])
 
+  /* Ao abrir uma paciente, busca o que já foi feito com ela. Era a maior falta:
+     as sessões só existiam espalhadas no calendário, mês a mês. */
+  useEffect(() => {
+    if (!editing?.id) { setHistorico(null); return }
+    let vivo = true
+    setHistorico(undefined)
+    supabase
+      .from('appointments')
+      .select('id, procedure, appointment_date, appointment_time, status, price, notes')
+      .eq('patient_id', editing.id)
+      .order('appointment_date', { ascending: false })
+      .then(({ data }) => { if (vivo) setHistorico(data ?? []) })
+    return () => { vivo = false }
+  }, [editing?.id])
+
   /* Antes o código só reagia ao sucesso: se o 4G do consultório caísse, a tela
      não mudava nada e ela tocava em Salvar de novo, criando pacientes repetidas. */
   async function savePatient(e) {
@@ -64,7 +88,12 @@ export default function Patients() {
     if (busy) return
     setBusy(true)
     setErro(null)
-    const payload = { ...editing, birth_date: editing.birth_date || null }
+    const payload = {
+      ...editing,
+      birth_date: editing.birth_date || null,
+      next_contact: editing.next_contact || null,
+      source: editing.source || null,
+    }
     delete payload.id
     delete payload.created_at
     delete payload.user_id
@@ -309,12 +338,12 @@ export default function Patients() {
                         <div
                           role="button"
                           tabIndex={0}
-                          onClick={() => { setErro(null); setEditing({ ...p, birth_date: p.birth_date ?? '' }) }}
+                          onClick={() => { setErro(null); setEditing(paraForm(p)) }}
                           onKeyDown={(e) => {
                             if (e.key === 'Enter' || e.key === ' ') {
                               e.preventDefault()
                               setErro(null)
-                              setEditing({ ...p, birth_date: p.birth_date ?? '' })
+                              setEditing(paraForm(p))
                             }
                           }}
                           className="min-w-0 flex-1 cursor-pointer py-3 pr-3 text-left transition-colors hover:bg-night/40"
@@ -339,6 +368,21 @@ export default function Patients() {
                             {p.birth_date && (
                               <span className="inline-flex items-center gap-1.5 text-xs text-mute">
                                 <Cake size={11} /> {fmtDate(p.birth_date)}
+                              </span>
+                            )}
+                            {p.source && (
+                              <span className="inline-flex items-center gap-1.5 text-xs text-mute/70">
+                                <Sprout size={11} /> {sourceLabel(p.source)}
+                              </span>
+                            )}
+                            {p.next_contact && (
+                              <span
+                                className={`inline-flex items-center gap-1.5 text-xs ${
+                                  p.next_contact <= todayISO() ? 'font-semibold text-amber-300' : 'text-mute/70'
+                                }`}
+                              >
+                                <CalendarClock size={11} />
+                                {p.next_contact <= todayISO() ? 'falar hoje' : fmtDate(p.next_contact)}
                               </span>
                             )}
                           </div>
@@ -424,6 +468,26 @@ export default function Patients() {
                 {stages.map((s) => <option key={s.id} value={s.id}>{s.label}</option>)}
               </select>
             </Field>
+            <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
+              <Field label="Veio de onde">
+                <select
+                  className={inputCls}
+                  value={editing.source ?? ''}
+                  onChange={(e) => setEditing({ ...editing, source: e.target.value })}
+                >
+                  <option value="">não sei</option>
+                  {SOURCES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
+                </select>
+              </Field>
+              <Field label="Falar de novo em">
+                <input
+                  type="date"
+                  className={inputCls}
+                  value={editing.next_contact ?? ''}
+                  onChange={(e) => setEditing({ ...editing, next_contact: e.target.value })}
+                />
+              </Field>
+            </div>
             <Field label="Anotações / histórico">
               <textarea
                 rows={3}
@@ -433,6 +497,65 @@ export default function Patients() {
                 onChange={(e) => setEditing({ ...editing, notes: e.target.value })}
               />
             </Field>
+            {/* Mensagem pronta: ela mandava tudo isso digitando na mão, dez vezes por dia */}
+            {editing.id && waLink(editing.phone) && MENSAGENS.some((m) => m.contexto === 'paciente') && (
+              <section className="rounded-2xl border border-edge bg-night/40 p-3">
+                <h3 className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-mute">
+                  <Phone size={13} /> Mandar mensagem
+                </h3>
+                <div className="flex flex-wrap gap-2">
+                  {MENSAGENS.filter((m) => m.contexto === 'paciente').map((m) => (
+                    <a
+                      key={m.id}
+                      href={waLink(editing.phone, preencher(m.texto, { nome: editing.name }))}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title={m.quando}
+                      className="inline-flex min-h-11 items-center rounded-full border border-edge bg-raise px-3.5 text-xs font-semibold text-goldsoft"
+                    >
+                      {m.rotulo}
+                    </a>
+                  ))}
+                </div>
+              </section>
+            )}
+
+            {/* O que já foi feito com ela. Na remodelação baby o acompanhamento é
+                semanal e essa é a pergunta de sempre: quantas sessões já teve. */}
+            {editing.id && (
+              <section className="rounded-2xl border border-edge bg-night/40 p-3">
+                <h3 className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-mute">
+                  <History size={14} />
+                  {historico === undefined
+                    ? 'Carregando histórico…'
+                    : historico?.length
+                      ? `${historico.length} ${historico.length === 1 ? 'sessão registrada' : 'sessões registradas'}`
+                      : 'Nenhuma sessão ainda'}
+                </h3>
+                {historico?.length > 0 && (
+                  <ul className="max-h-44 space-y-1.5 overflow-y-auto overscroll-contain">
+                    {historico.map((h) => (
+                      <li key={h.id} className="flex items-baseline gap-2 text-xs">
+                        <span className="shrink-0 font-semibold tabular-nums text-goldsoft">
+                          {fmtDate(h.appointment_date)}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate text-mute">{h.procedure}</span>
+                        {h.price != null && <span className="shrink-0 text-mute/70">{brl(h.price)}</span>}
+                        <span
+                          className={`shrink-0 ${
+                            h.status === 'concluido' ? 'text-emerald-400'
+                              : h.status === 'cancelado' ? 'text-rose-400/70' : 'text-mute/60'
+                          }`}
+                        >
+                          {h.status === 'concluido' ? 'feito' : h.status === 'cancelado' ? 'cancelado' : 'marcado'}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+            )}
+
             <Erro>{erro}</Erro>
             {/* Apagar longe do Salvar: colados, o polegar erra e não tem desfazer */}
             <div className="flex flex-col gap-2 pt-1">

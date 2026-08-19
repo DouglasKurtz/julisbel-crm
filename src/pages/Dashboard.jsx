@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { CalendarDays, Users, ArrowRight, Ear } from 'lucide-react'
+import { CalendarDays, Users, ArrowRight, Ear, Wallet, PhoneMissed, Sprout, Phone } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../lib/auth'
 import { Spinner, Tag } from '../lib/ui'
-import { todayISO, fmtTime, fmtDate } from '../lib/dates'
+import { todayISO, fmtTime, fmtDate, MONTHS } from '../lib/dates'
+import { sourceLabel, brl } from '../lib/patients'
+import { waLink } from '../lib/whatsapp'
 
 export default function Dashboard() {
   const { session } = useAuth()
@@ -12,17 +14,27 @@ export default function Dashboard() {
 
   useEffect(() => {
     const today = todayISO()
+    const inicioMes = today.slice(0, 8) + '01'
+    const d = new Date()
+    const fimMes = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate()).padStart(2, '0')}`
+
     Promise.all([
       supabase.from('appointments').select('*, patients(name)').eq('appointment_date', today).order('appointment_time').order('created_at'),
       supabase.from('appointments').select('*, patients(name)').gt('appointment_date', today).eq('status', 'agendado').order('appointment_date').order('appointment_time').limit(5),
-      supabase.from('patients').select('id,stage_id'),
+      supabase.from('patients').select('id,stage_id,source'),
       supabase.from('stages').select('id,label').order('position'),
-    ]).then(([today, upcoming, patients, stages]) =>
+      // dinheiro do mês corrente
+      supabase.from('appointments').select('price,paid,status').gte('appointment_date', inicioMes).lte('appointment_date', fimMes).not('price', 'is', null),
+      // quem já passou da data combinada e não voltou
+      supabase.from('patients').select('id,name,phone,next_contact').not('next_contact', 'is', null).lte('next_contact', today).order('next_contact').limit(8),
+    ]).then(([today, upcoming, patients, stages, mes, atrasadas]) =>
       setData({
         today: today.data ?? [],
         upcoming: upcoming.data ?? [],
         patients: patients.data ?? [],
         stages: stages.data ?? [],
+        mes: mes.data ?? [],
+        atrasadas: atrasadas.data ?? [],
       })
     )
   }, [])
@@ -30,6 +42,18 @@ export default function Dashboard() {
   if (!data) return <Spinner />
 
   const stageCounts = data.stages.map((s) => ({ ...s, count: data.patients.filter((p) => p.stage_id === s.id).length }))
+
+  const validos = data.mes.filter((a) => a.status !== 'cancelado')
+  const recebido = validos.filter((a) => a.paid).reduce((s, a) => s + Number(a.price), 0)
+  const aReceber = validos.filter((a) => !a.paid).reduce((s, a) => s + Number(a.price), 0)
+  const mesNome = MONTHS[new Date().getMonth()].toLowerCase()
+
+  const origens = Object.entries(
+    data.patients.reduce((acc, p) => {
+      if (p.source) acc[p.source] = (acc[p.source] ?? 0) + 1
+      return acc
+    }, {})
+  ).sort((a, b) => b[1] - a[1])
 
   return (
     <div className="space-y-4">
@@ -80,6 +104,77 @@ export default function Dashboard() {
           )}
         </Card>
       </div>
+
+      {/* Quem passou da data combinada. Sem secretária, quem não é lembrado some. */}
+      {data.atrasadas.length > 0 && (
+        <section className="rounded-3xl border border-amber-500/30 bg-amber-500/5 p-4 sm:p-5">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-amber-300">
+            <PhoneMissed size={15} /> Precisam de um retorno
+          </h2>
+          <ul className="space-y-2">
+            {data.atrasadas.map((p) => {
+              const wa = waLink(p.phone)
+              return (
+                <li key={p.id} className="flex items-center gap-3 rounded-xl bg-raise px-3.5 py-2.5">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm">{p.name}</p>
+                    <p className="text-xs text-mute">
+                      {p.next_contact === todayISO() ? 'combinado pra hoje' : `desde ${fmtDate(p.next_contact)}`}
+                    </p>
+                  </div>
+                  {wa && (
+                    <a
+                      href={wa}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex min-h-11 shrink-0 items-center gap-1.5 rounded-lg px-2 text-xs font-semibold text-goldsoft"
+                    >
+                      <Phone size={13} /> falar
+                    </a>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </section>
+      )}
+
+      {/* Dinheiro do mês: até agora ela não conseguia responder "quanto eu fiz?" */}
+      <section className="rounded-3xl border border-edge bg-panel p-4 sm:p-5">
+        <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-mute">
+          <Wallet size={15} /> Dinheiro de {mesNome}
+        </h2>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="rounded-2xl bg-raise p-3">
+            <p className="text-xl font-bold tabular-nums text-emerald-300">{brl(recebido) ?? 'R$ 0,00'}</p>
+            <p className="mt-1 text-[11px] font-semibold text-mute">já recebido</p>
+          </div>
+          <div className="rounded-2xl bg-raise p-3">
+            <p className="text-xl font-bold tabular-nums text-amber-300">{brl(aReceber) ?? 'R$ 0,00'}</p>
+            <p className="mt-1 text-[11px] font-semibold text-mute">ainda a receber</p>
+          </div>
+        </div>
+        {validos.length === 0 && (
+          <p className="mt-3 text-xs text-mute">
+            Põe o valor no atendimento, lá na Agenda, que ele aparece aqui.
+          </p>
+        )}
+      </section>
+
+      {origens.length > 0 && (
+        <section className="rounded-3xl border border-edge bg-panel p-4 sm:p-5">
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-bold uppercase tracking-wider text-mute">
+            <Sprout size={15} /> De onde elas vêm
+          </h2>
+          <div className="flex flex-wrap gap-2">
+            {origens.map(([key, n]) => (
+              <span key={key} className="rounded-full bg-raise px-3 py-1.5 text-xs">
+                <b className="tabular-nums">{n}</b> <span className="text-mute">{sourceLabel(key)}</span>
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="rounded-3xl border border-edge bg-panel p-4 sm:p-5">
         <div className="mb-3 flex items-center justify-between">

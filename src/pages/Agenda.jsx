@@ -3,6 +3,8 @@ import { Plus, ChevronLeft, ChevronRight, Trash2, CalendarDays, Phone, RotateCw 
 import { supabase } from '../lib/supabase'
 import { Btn, IconBtn, Field, inputCls, Modal, Empty, Spinner, Tag, Erro } from '../lib/ui'
 import { todayISO, fmtTime, WEEKDAYS, MONTHS } from '../lib/dates'
+import { PAYMENTS, brl } from '../lib/patients'
+import { waLink, MENSAGENS, preencher } from '../lib/whatsapp'
 
 const PROCEDURES = ['Correção de orelha', 'Remodelação baby', 'Fragilização de cartilagem', 'Retorno / avaliação', 'Outro']
 const STATUSES = [
@@ -11,19 +13,26 @@ const STATUSES = [
   { key: 'cancelado', label: 'Cancelado', color: 'rose' },
 ]
 
-const BLANK = { patient_id: '', procedure: PROCEDURES[0], appointment_date: todayISO(), appointment_time: '', status: 'agendado', notes: '' }
+const BLANK = {
+  patient_id: '', procedure: PROCEDURES[0], appointment_date: todayISO(), appointment_time: '',
+  status: 'agendado', price: '', payment_method: '', paid: false, notes: '',
+}
+
+// o formulário não aceita null nos campos controlados
+const paraForm = (ev) => ({
+  ...ev,
+  appointment_time: (ev.appointment_time ?? '').slice(0, 5),
+  price: ev.price ?? '',
+  payment_method: ev.payment_method ?? '',
+  paid: ev.paid ?? false,
+  notes: ev.notes ?? '',
+})
 
 // soma dias a uma data ISO sem depender de fuso
 function somaDias(iso, dias) {
   const [y, m, d] = iso.split('-').map(Number)
   const dt = new Date(y, m - 1, d + dias)
   return `${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`
-}
-
-function waLink(phone) {
-  const d = (phone ?? '').replace(/\D/g, '')
-  if (d.length < 10) return null
-  return `https://wa.me/${d.length <= 11 ? '55' + d : d}`
 }
 
 export default function Agenda() {
@@ -77,7 +86,12 @@ export default function Agenda() {
     if (busy) return
     setBusy(true)
     setErro(null)
-    const payload = { ...editing, appointment_time: editing.appointment_time || null }
+    const payload = {
+      ...editing,
+      appointment_time: editing.appointment_time || null,
+      price: editing.price === '' || editing.price == null ? null : Number(editing.price),
+      payment_method: editing.payment_method || null,
+    }
     delete payload.id
     delete payload.created_at
     delete payload.user_id
@@ -152,12 +166,19 @@ export default function Agenda() {
                     {ev.appointment_time ? fmtTime(ev.appointment_time) : '—'}
                   </span>
                   <button
-                    onClick={() => { setErro(null); setEditing({ ...ev, appointment_time: (ev.appointment_time ?? '').slice(0, 5) }) }}
+                    onClick={() => { setErro(null); setEditing(paraForm(ev)) }}
                     className="min-w-0 flex-1 text-left"
                   >
                     <p className="text-sm font-medium">{ev.patients?.name ?? 'Paciente'}</p>
                     <p className="mt-0.5 text-xs text-mute">{ev.procedure}</p>
-                    {st && <span className="mt-1.5 inline-block"><Tag color={st.color}>{st.label}</Tag></span>}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+                      {st && <Tag color={st.color}>{st.label}</Tag>}
+                      {ev.price != null && (
+                        <Tag color={ev.paid ? 'green' : 'amber'}>
+                          {brl(ev.price)}{ev.paid ? ' recebido' : ' a receber'}
+                        </Tag>
+                      )}
+                    </div>
                   </button>
                 </div>
                 {/* ações separadas do corpo: antes a lixeira ficava colada e o polegar errava */}
@@ -332,6 +353,40 @@ export default function Agenda() {
                 {STATUSES.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
               </select>
             </Field>
+
+            <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2">
+              <Field label="Valor">
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.01"
+                  min="0"
+                  placeholder="0,00"
+                  className={inputCls}
+                  value={editing.price ?? ''}
+                  onChange={(e) => setEditing({ ...editing, price: e.target.value })}
+                />
+              </Field>
+              <Field label="Pagamento">
+                <select
+                  className={inputCls}
+                  value={editing.payment_method ?? ''}
+                  onChange={(e) => setEditing({ ...editing, payment_method: e.target.value })}
+                >
+                  <option value="">não definido</option>
+                  {PAYMENTS.map((p) => <option key={p.key} value={p.key}>{p.label}</option>)}
+                </select>
+              </Field>
+            </div>
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 rounded-xl border border-edge bg-night px-3.5">
+              <input
+                type="checkbox"
+                checked={!!editing.paid}
+                onChange={(e) => setEditing({ ...editing, paid: e.target.checked })}
+                className="h-5 w-5 accent-[#c4a880]"
+              />
+              <span className="text-sm">Já recebi este valor</span>
+            </label>
             <Field label="Anotações">
               <textarea
                 rows={3}
@@ -340,6 +395,41 @@ export default function Agenda() {
                 onChange={(e) => setEditing({ ...editing, notes: e.target.value })}
               />
             </Field>
+            {/* mensagens do contexto de atendimento: confirmar véspera, lembrar retorno, cuidados */}
+            {(() => {
+              const pac = patients.find((p) => p.id === editing.patient_id)
+              const link = waLink(pac?.phone)
+              const doAtendimento = MENSAGENS.filter((m) => m.contexto === 'atendimento')
+              if (!link || doAtendimento.length === 0) return null
+              const [ay, am, ad] = (editing.appointment_date ?? '').split('-')
+              const dados = {
+                nome: pac?.name,
+                data: ay ? `${ad}/${am}` : '',
+                hora: (editing.appointment_time ?? '').slice(0, 5),
+              }
+              return (
+                <section className="rounded-2xl border border-edge bg-night/40 p-3">
+                  <h3 className="mb-2 flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-mute">
+                    <Phone size={13} /> Mandar mensagem
+                  </h3>
+                  <div className="flex flex-wrap gap-2">
+                    {doAtendimento.map((m) => (
+                      <a
+                        key={m.id}
+                        href={waLink(pac.phone, preencher(m.texto, dados))}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title={m.quando}
+                        className="inline-flex min-h-11 items-center rounded-full border border-edge bg-raise px-3.5 text-xs font-semibold text-goldsoft"
+                      >
+                        {m.rotulo}
+                      </a>
+                    ))}
+                  </div>
+                </section>
+              )
+            })()}
+
             <Erro>{erro}</Erro>
             <Btn type="submit" className="w-full" disabled={busy}>
               {busy ? 'Salvando…' : 'Salvar'}
